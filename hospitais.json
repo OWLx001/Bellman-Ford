@@ -1,0 +1,366 @@
+[
+ {
+  "nome": "CIAS Unimed Uberlândia",
+  "tipo": "hospital",
+  "lat": -18.9222856,
+  "lon": -48.2819295,
+  "osm": "node/6563333232"
+ },
+ {
+  "nome": "Centro Oncológico do Triângulo",
+  "tipo": "hospital",
+  "lat": -18.9117689,
+  "lon": -48.2433039,
+  "osm": "way/190982415"
+ },
+ {
+  "nome": "Hospital Orthomed Center",
+  "tipo": "hospital",
+  "lat": -18.9306274,
+  "lon": -48.2869655,
+  "osm": "way/1078711334"
+ },
+ {
+  "nome": "Hospital Santa Catarina",
+  "tipo": "hospital",
+  "lat": -18.9163539,
+  "lon": -48.2800077,
+  "osm": "relation/17382190"
+ },
+ {
+  "nome": "Hospital Santa Genoveva",
+  "tipo": "hospital",
+  "lat": -18.9140909,
+  "lon": -48.2856129,
+  "osm": "way/303786548"
+ },
+ {
+  "nome": "Hospital Santa Marta",
+  "tipo": "hospital",
+  "lat": -18.9317448,
+  "lon": -48.2859393,
+  "osm": "way/1493499766"
+ },
+ {
+  "nome": "Hospital de Clínicas da Universidade Federal de Uberlândia",
+  "tipo": "hospital",
+  "lat": -18.882108,
+  "lon": -48.2592362,
+  "osm": "way/305161746"
+ },
+ {
+  "nome": "Hospital do Triângulo",
+  "tipo": "hospital",
+  "lat": -18.9125926,
+  "lon": -48.2750884,
+  "osm": "way/305171841"
+ },
+ {
+  "nome": "Hospital e Maternidade Municipal Dr. Odelmo Leão Carneiro",
+  "tipo": "hospital",
+  "lat": -18.9509745,
+  "lon": -48.2475429,
+  "osm": "way/283587396"
+ },
+ {
+  "nome": "Hospital e Maternidade Santa Clara",
+  "tipo": "hospital",
+  "lat": -18.9200282,
+  "lon": -48.2811655,
+  "osm": "way/1075696071"
+ },
+ {
+  "nome": "Madrecor",
+  "tipo": "hospital",
+  "lat": -18.927754,
+  "lon": -48.2383598,
+  "osm": "way/300943916"
+ },
+ {
+  "nome": "Nefroclínica",
+  "tipo": "hospital",
+  "lat": -18.8880598,
+  "lon": -48.258782,
+  "osm": "way/312800946"
+ },
+ {
+  "nome": "Novo Pronto Socorro UFU",
+  "tipo": "hospital",
+  "lat": -18.8814939,
+  "lon": -48.260704,
+  "osm": "way/479444520"
+ },
+ {
+  "nome": "UCCI - Unidade de Cuidado Continuado Intregado",
+  "tipo": "hospital",
+  "lat": -18.8871071,
+  "lon": -48.244708,
+  "osm": "way/1553432714"
+ },
+ {
+  "nome": "Ambulatório Municipal de Oftalmologia",
+  "tipo": "clinica",
+  "lat": -18.9243711,
+  "lon": -48.2711915,
+  "osm": "node/6130259962"
+ },
+ {
+  "nome": "CLIMA Clínica de Imagem",
+  "tipo": "clinica",
+  "lat": -18.9226827,
+  "lon": -48.2917253,
+  "osm": "node/5316590321"
+ },
+ {
+  "nome": "Clínica Aragon",
+  "tipo": "clinica",
+  "lat": -18.9264534,
+  "lon": -48.2801598,
+  "osm": "way/630956221"
+ },
+ {
+  "nome": "Clínica Bioesthetics",
+  "tipo": "clinica",
+  "lat": -18.922572,
+  "lon": -48.2468754,
+  "osm": "node/6668167393"
+ },
+ {
+  "nome": "Clínica Cemig Saúde",
+  "tipo": "clinica",
+  "lat": -18.9154957,
+  "lon": -48.2803894,
+  "osm": "way/1266266199"
+ },
+ {
+  "nome": "Clínica SEMPRE - Unimed",
+  "tipo": "clinica",
+  "lat": -18.9121951,
+  "lon": -48.2551536,
+  "osm": "node/13619869501"
+ },
+ {
+  "nome": "Clínica Santa Catarina",
+  "tipo": "clinica",
+  "lat": -18.9168194,
+  "lon": -48.2810957,
+  "osm": "way/1533096004"
+ },
+ {
+  "nome": "Clínica Viver",
+  "tipo": "clinica",
+  "lat": -18.9162309,
+  "lon": -48.2782871,
+  "osm": "node/13646254565"
+ },
+ {
+  "nome": "Consultório Dr. Arthur Lacerda (Pediatra)",
+  "tipo": "clinica",
+  "lat": -18.9168218,
+  "lon": -48.2851566,
+  "osm": "node/12525035383"
+ },
+ {
+  "nome": "Dhiom Centro Médico",
+  "tipo": "clinica",
+  "lat": -18.9255114,
+  "lon": -48.2802024,
+  "osm": "node/5898037405"
+ },
+ {
+  "nome": "Espaço Saúde",
+  "tipo": "clinica",
+  "lat": -18.9078735,
+  "lon": -48.2402095,
+  "osm": "way/636148885"
+ },
+ {
+  "nome": "Espaço do Corpo",
+  "tipo": "clinica",
+  "lat": -18.9225461,
+  "lon": -48.245748,
+  "osm": "way/636449558"
+ },
+ {
+  "nome": "Fonoreability",
+  "tipo": "clinica",
+  "lat": -18.9248985,
+  "lon": -48.2878233,
+  "osm": "node/11734161569"
+ },
+ {
+  "nome": "ISO OLHOS",
+  "tipo": "clinica",
+  "lat": -18.912992,
+  "lon": -48.3253821,
+  "osm": "way/1274284700"
+ },
+ {
+  "nome": "Instituto Rocha e Silva",
+  "tipo": "clinica",
+  "lat": -18.926797,
+  "lon": -48.2793141,
+  "osm": "way/624579407"
+ },
+ {
+  "nome": "Instituto de Olhos do Triângulo",
+  "tipo": "clinica",
+  "lat": -18.9189139,
+  "lon": -48.2818678,
+  "osm": "node/6653590558"
+ },
+ {
+  "nome": "Labor Clínica",
+  "tipo": "clinica",
+  "lat": -18.9157891,
+  "lon": -48.2785564,
+  "osm": "node/13646254566"
+ },
+ {
+  "nome": "Medic Mais Clínica Médica e Odontológica",
+  "tipo": "clinica",
+  "lat": -18.9165364,
+  "lon": -48.2715429,
+  "osm": "way/625670621"
+ },
+ {
+  "nome": "Posto de Saúde",
+  "tipo": "clinica",
+  "lat": -18.8899237,
+  "lon": -48.3325831,
+  "osm": "node/5918894883"
+ },
+ {
+  "nome": "Retina Clinic",
+  "tipo": "clinica",
+  "lat": -18.9256883,
+  "lon": -48.2806904,
+  "osm": "way/630956229"
+ },
+ {
+  "nome": "UAI Luizote",
+  "tipo": "clinica",
+  "lat": -18.920774,
+  "lon": -48.3301291,
+  "osm": "way/1272098541"
+ },
+ {
+  "nome": "UAI Martins",
+  "tipo": "clinica",
+  "lat": -18.9139594,
+  "lon": -48.2876183,
+  "osm": "node/4067225745"
+ },
+ {
+  "nome": "UAI Morumbi",
+  "tipo": "clinica",
+  "lat": -18.91831,
+  "lon": -48.1852406,
+  "osm": "way/258090404"
+ },
+ {
+  "nome": "UAI PLANALTO",
+  "tipo": "clinica",
+  "lat": -18.9381488,
+  "lon": -48.308731,
+  "osm": "way/312797555"
+ },
+ {
+  "nome": "UAI Pampulha Irmã Dulce",
+  "tipo": "clinica",
+  "lat": -18.9294872,
+  "lon": -48.2444579,
+  "osm": "way/1454925873"
+ },
+ {
+  "nome": "UAI Roosevelt - Doutor Josias de Freitas",
+  "tipo": "clinica",
+  "lat": -18.8914088,
+  "lon": -48.2856791,
+  "osm": "way/1565583634"
+ },
+ {
+  "nome": "UAI São Jorge",
+  "tipo": "clinica",
+  "lat": -18.9594411,
+  "lon": -48.2356318,
+  "osm": "way/1198665227"
+ },
+ {
+  "nome": "UAI Tibery Anice Dib Jatene",
+  "tipo": "clinica",
+  "lat": -18.9061119,
+  "lon": -48.2465241,
+  "osm": "way/154568294"
+ },
+ {
+  "nome": "UAPS Nossa Senhora das Graças",
+  "tipo": "clinica",
+  "lat": -18.8704032,
+  "lon": -48.2798662,
+  "osm": "way/486861976"
+ },
+ {
+  "nome": "UBS Custódio Pereira",
+  "tipo": "clinica",
+  "lat": -18.8918767,
+  "lon": -48.2417683,
+  "osm": "node/10782782075"
+ },
+ {
+  "nome": "UBSF Dom Almir",
+  "tipo": "clinica",
+  "lat": -18.9159409,
+  "lon": -48.2095473,
+  "osm": "node/12177365379"
+ },
+ {
+  "nome": "UBSF Jardim Ipanema",
+  "tipo": "clinica",
+  "lat": -18.8913841,
+  "lon": -48.2221757,
+  "osm": "node/13236496895"
+ },
+ {
+  "nome": "UBSF Joana D'arc",
+  "tipo": "clinica",
+  "lat": -18.9064493,
+  "lon": -48.205342,
+  "osm": "way/1442490320"
+ },
+ {
+  "nome": "UBSF Morumbi 1 e 2",
+  "tipo": "clinica",
+  "lat": -18.9105079,
+  "lon": -48.1807156,
+  "osm": "node/13196751108"
+ },
+ {
+  "nome": "UBSF Morumbi III",
+  "tipo": "clinica",
+  "lat": -18.9154687,
+  "lon": -48.1875539,
+  "osm": "way/1569879955"
+ },
+ {
+  "nome": "UBSF Pequis",
+  "tipo": "clinica",
+  "lat": -18.9723181,
+  "lon": -48.3727245,
+  "osm": "way/1486966042"
+ },
+ {
+  "nome": "UMC",
+  "tipo": "clinica",
+  "lat": -18.9478407,
+  "lon": -48.269994,
+  "osm": "way/1466209551"
+ },
+ {
+  "nome": "Visão Center Exame de Vista",
+  "tipo": "clinica",
+  "lat": -18.9109812,
+  "lon": -48.3192869,
+  "osm": "way/1272101111"
+ }
+]

@@ -1,0 +1,14 @@
+1. No terminal, dentro da pasta:
+   py -m pip install -r requirements.txt
+2. Baixar o mapa (grafo) e os hospitais (precisa de internet):
+   py baixar_mapa.py
+   -> cria uberlandia.graphml e hospitais.json
+   So os hospitais (sem mexer no grafo):  py baixar_mapa.py hospitais
+3. Abrir o app:
+   py -m streamlit run app.py
+4. Na lateral: escolha a central (lista, coordenadas ou endereco),
+   filtre os hospitais e o criterio (distancia ou tempo).
+5. No mapa: Reproduzir/Proximo mostram as iteracoes do Bellman-Ford;
+   rotas verdes = central -> hospitais. Botao sol/lua troca o tema.
+6. Testes do algoritmo:
+   py -m unittest test_bellman_ford -v

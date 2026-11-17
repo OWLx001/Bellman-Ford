@@ -1,0 +1,20 @@
+[server]
+headless = true
+
+[client]
+# "minimal" esconde o botão Deploy e o menu de desenvolvedor.
+toolbarMode = "minimal"
+
+# Dois temas: cada visitante escolhe o seu no botão sol/lua do app
+# (a escolha fica no navegador dele e na URL: ?tema=claro | ?tema=escuro).
+[theme.dark]
+primaryColor = "#71717A"
+backgroundColor = "#111113"
+secondaryBackgroundColor = "#1A1A1D"
+textColor = "#E7E7EA"
+
+[theme.light]
+primaryColor = "#2563EB"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F1F4F9"
+textColor = "#18212F"
