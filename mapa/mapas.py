@@ -1,11 +1,16 @@
 """Geração do grafo: rede real do OpenStreetMap (Uberlândia) e grade de demonstração."""
 from __future__ import annotations
 from pathlib import Path
+import json
 import math
 import re
 import networkx as nx
 
-MAPA_ARQUIVO = Path(__file__).with_name("uberlandia.graphml")
+PASTA_DADOS = Path(__file__).resolve().parent.parent / "dados"   # <raiz do projeto>/dados
+MAPA_ARQUIVO = PASTA_DADOS / "uberlandia.graphml"
+HOSPITAIS_ARQUIVO = PASTA_DADOS / "hospitais.json"
+CENTRO_UBERLANDIA = (-18.9186, -48.2772)   # (lat, lon) aproximado do centro
+RAIO_M = 15000                             # raio do recorte do mapa, em metros
 
 
 def distancia_reta_m(lat1, lon1, lat2, lon2):
@@ -52,73 +57,23 @@ def criar_demonstracao(n=23):
     return g
 
 
-def baixar_mapa(
-    arquivo=MAPA_ARQUIVO,
-    origem="internet",
-    arquivo_osm="uberlandia.osm",
-    raio=15000
-):
+def baixar_mapa(arquivo=MAPA_ARQUIVO, raio=RAIO_M):
+    """Baixa as ruas (para carro) do OpenStreetMap, calcula tempos e salva em GraphML."""
     import osmnx as ox
 
-    arquivo = Path(arquivo)
+    ox.settings.use_cache = True
+    ox.settings.log_console = True
+    ox.settings.requests_timeout = 240
+    print(f"Baixando ruas em um raio de {raio / 1000:.0f} km...")
+    g = ox.graph_from_point(CENTRO_UBERLANDIA, dist=raio, network_type="drive",
+                            simplify=True, retain_all=False)
 
-    if origem == "local":
-        caminho_osm = Path(arquivo_osm)
-
-        if not caminho_osm.exists():
-            raise FileNotFoundError(
-                f"Arquivo OSM não encontrado: {caminho_osm}"
-            )
-
-        print("Carregando arquivo OSM local...")
-
-        g = ox.graph_from_xml(
-            caminho_osm,
-            simplify=True,
-            retain_all=False,
-            bidirectional=False
-        )
-
-    elif origem == "internet":
-        print(f"Baixando ruas em um raio de {raio / 1000:.0f} km...")
-
-        ox.settings.use_cache = True
-        ox.settings.log_console = True
-        ox.settings.requests_timeout = 240
-
-        ox.settings.overpass_url = (
-            "https://overpass-api.de/api"
-        )
-
-        # Centro aproximado de Uberlândia
-        centro = (-18.9186, -48.2772)
-
-        g = ox.graph_from_point(
-            centro,
-            dist=raio,
-            network_type="drive",
-            simplify=True,
-            retain_all=False
-        )
-
-    else:
-        raise ValueError("Origem deve ser 'internet' ou 'local'.")
-
-    print("Calculando velocidades estimadas...")
-    g = ox.routing.add_edge_speeds(g)
-
-    print("Calculando tempos estimados...")
-    g = ox.routing.add_edge_travel_times(g)
-
-    print("Salvando mapa...")
+    print("Calculando velocidades e tempos estimados...")
+    g = ox.routing.add_edge_travel_times(ox.routing.add_edge_speeds(g))
 
     ox.io.save_graphml(g, arquivo)
-
-    print("Mapa salvo com sucesso!")
-    print("Vértices:", g.number_of_nodes())
-    print("Arestas:", g.number_of_edges())
-    print("Arquivo:", arquivo.resolve())
-
+    print(f"Mapa salvo em {Path(arquivo).resolve()}: "
+          f"{g.number_of_nodes()} vértices, {g.number_of_edges()} arestas.")
     return g
 
 
@@ -130,13 +85,8 @@ def ler_mapa(arquivo=MAPA_ARQUIVO):
 # ---------------------------------------------------------------------------
 # Estabelecimentos de saúde (OpenStreetMap)
 # ---------------------------------------------------------------------------
-HOSPITAIS_ARQUIVO = Path(__file__).with_name("hospitais.json")
-CENTRO_UBERLANDIA = (-18.9186, -48.2772)
-
-
-def baixar_hospitais(arquivo=HOSPITAIS_ARQUIVO, raio=15000):
+def baixar_hospitais(arquivo=HOSPITAIS_ARQUIVO, raio=RAIO_M):
     """Baixa hospitais e clínicas/UPAs/UAIs do OSM e salva um JSON simples."""
-    import json
     import osmnx as ox
 
     ox.settings.use_cache = True
@@ -179,7 +129,6 @@ def baixar_hospitais(arquivo=HOSPITAIS_ARQUIVO, raio=15000):
 
 
 def ler_hospitais(arquivo=HOSPITAIS_ARQUIVO):
-    import json
     return json.loads(Path(arquivo).read_text(encoding="utf-8"))
 
 
@@ -199,20 +148,17 @@ def hospitais_demo(g):
     return saida
 
 
-def resumo_grafo(g):
-    """Números básicos do grafo gerado, para exibir na interface."""
-    total_m = 0.0
-    for _, _, d in g.edges(data=True):
-        try:
-            c = float(d.get("length", 0))
-            if math.isfinite(c):
-                total_m += c
-        except (TypeError, ValueError):
-            pass
-    return {
-        "vertices": g.number_of_nodes(),
-        "arestas": g.number_of_edges(),
-        "km_arestas": total_m / 1000,
-        "direcionado": g.is_directed(),
-        "multigrafo": g.is_multigraph(),
-    }
+def vertices_mais_proximos(g, pontos):
+    """Para cada (lat, lon), o vértice do grafo mais próximo e a distância em metros."""
+    import numpy as np
+    ids = list(g.nodes)
+    lat = np.array([g.nodes[v]["y"] for v in ids], dtype=float)
+    lon = np.array([g.nodes[v]["x"] for v in ids], dtype=float)
+    saida = []
+    for plat, plon in pontos:
+        dx = np.radians(lon - plon) * math.cos(math.radians(plat))
+        dy = np.radians(lat - plat)
+        d2 = dx * dx + dy * dy
+        k = int(np.argmin(d2))
+        saida.append((ids[k], float(math.sqrt(d2[k]) * 6_371_000.0)))
+    return saida

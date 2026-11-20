@@ -3,156 +3,106 @@
 Uma central imaginária de distribuição e os hospitais/clínicas da cidade
 (OpenStreetMap). Uma execução do Bellman-Ford a partir da central dá o menor
 caminho até todos os estabelecimentos filtrados.
+
+Rodar:  streamlit run app.py
 """
 from html import escape
+
 import streamlit as st
 import streamlit.components.v1 as components
-from bellman_ford import bellman_ford, caminho, custo_rota, vertices_mais_proximos
-from mapas import (MAPA_ARQUIVO, HOSPITAIS_ARQUIVO, CENTRO_UBERLANDIA, baixar_mapa, baixar_hospitais,
-                   criar_demonstracao, ler_mapa, ler_hospitais, hospitais_demo)
-from visualizador_html import json_grafo, json_busca, json_extra, montar_html
 
-st.set_page_config(page_title='Distribuição de remédios — Bellman-Ford', layout='wide', page_icon='💊')
+from algoritmo.bellman_ford import achar_ciclo, bellman_ford, tabela_hospitais
+from interface.estilo import css, script_tema
+from mapa.mapas import (CENTRO_UBERLANDIA, HOSPITAIS_ARQUIVO, MAPA_ARQUIVO, baixar_hospitais, baixar_mapa,
+                   criar_demonstracao, hospitais_demo, ler_hospitais, ler_mapa, vertices_mais_proximos)
+from mapa.pesos import aplicar_pesos
+from mapa.rotas_texto import trechos_por_rua
+from interface.visualizador_html import json_busca, json_extra, json_grafo, json_pesos, montar_html
 
-# ---------------------------------------------------------------------------
-# Tema claro/escuro (sol/lua)
-# ---------------------------------------------------------------------------
-CORES = {
-    'escuro': dict(panel='#1A1A1D', border='#2E2E33', muted='#9A9AA3', accent='#B4B4BC', hi='rgba(161,161,170,.14)'),
-    'claro': dict(panel='#F6F8FB', border='#D5DCE6', muted='#5B6878', accent='#2563EB', hi='rgba(37,99,235,.10)'),
-}
-
-# O tema de cada visitante fica na URL (?tema=claro|escuro) e no navegador dele.
-# As cores dos dois temas estão em .streamlit/config.toml ([theme.light] e [theme.dark]).
-tema = 'claro' if st.query_params.get('tema') == 'claro' else 'escuro'
-st.query_params['tema'] = tema
-st.session_state.tema_widget = tema
-
-
-def _mudar_tema():
-    novo = st.session_state.tema_widget
-    if novo:                                   # clicar no já selecionado não "desliga" o tema
-        st.query_params['tema'] = novo
-
-
-c = CORES[tema]
-
-st.markdown(f'''<style>
-[data-testid="stAppDeployButton"], [data-testid="stMainMenu"], #MainMenu, footer {{display:none !important}}
-header[data-testid="stHeader"] {{background:transparent}}
-.block-container {{padding-top:2.2rem; padding-bottom:1rem; max-width:1500px}}
-.hero h1 {{font-size:clamp(1.3rem, 2.6vw, 2rem); line-height:1.2; margin:0 0 .25rem; padding:0; font-weight:700}}
-.hero h1 .accent {{color:{c['accent']}}}
-.hero [data-testid="stHeaderActionElements"] {{display:none}}
-.hero p {{color:{c['muted']}; margin:0 0 .6rem; font-size:clamp(.85rem, 1.4vw, .98rem)}}
-[data-testid="stMetric"] {{background:{c['panel']}; border:1px solid {c['border']}; border-radius:14px; padding:12px 16px}}
-[data-testid="stMetricLabel"] p {{color:{c['muted']}; font-size:.82rem}}
-[data-testid="stMetricValue"] {{font-size:clamp(1.1rem, 2vw, 1.55rem); white-space:nowrap}}
-[data-testid="stHeading"] h3 {{font-size:clamp(1.1rem, 2.2vw, 1.5rem); padding-top:1rem}}
-.ranking {{overflow-x:auto; border:1px solid {c['border']}; border-radius:14px}}
-.ranking table {{width:100%; border-collapse:collapse; font-size:.9rem}}
-.ranking th {{text-align:left; font-weight:600; color:{c['muted']}; background:{c['panel']}; padding:9px 12px; border-bottom:1px solid {c['border']}; white-space:nowrap}}
-.ranking td {{padding:8px 12px; border-bottom:1px solid {c['border']}; white-space:nowrap}}
-.ranking tr:last-child td {{border-bottom:0}}
-.ranking tr.hi td {{background:{c['hi']}; font-weight:600}}
-.ranking td.num {{text-align:right; font-variant-numeric:tabular-nums}}
-.badge {{display:inline-block; padding:1px 8px; border-radius:999px; font-size:.75rem; border:1px solid {c['border']}}}
-.badge.h {{color:#fff; background:#DC2626; border-color:#DC2626}} .badge.c {{color:#1a1a1a; background:#FBBF24; border-color:#FBBF24}}
-/* Mapa: a altura acompanha a tela. */
-.st-key-mapa [data-testid="stElementContainer"] {{height:auto !important}}
-.st-key-mapa iframe {{border-radius:14px; height:clamp(560px, calc(100vh - 7rem), 900px) !important}}
-/* Script invisível que aplica o tema */
-.st-key-tema_js {{display:none !important}}
-/* Título + botão de tema sempre na mesma linha */
-[data-testid="stHorizontalBlock"]:has(.hero) {{flex-wrap:nowrap !important; align-items:flex-start; gap:.75rem}}
-[data-testid="stHorizontalBlock"]:has(.hero) > [data-testid="stColumn"]:first-child {{flex:1 1 auto !important; min-width:0 !important; width:auto !important}}
-[data-testid="stHorizontalBlock"]:has(.hero) > [data-testid="stColumn"]:last-child {{flex:0 0 auto !important; min-width:0 !important; width:auto !important; display:flex; justify-content:flex-end}}
-@media (max-width: 1000px) {{
-  [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) {{flex-wrap:wrap; gap:.6rem}}
-  [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="stColumn"] {{flex:1 1 calc(50% - .6rem) !important; min-width:calc(50% - .6rem) !important; width:auto !important}}
-}}
-@media (max-width: 640px) {{
-  .block-container {{padding-left:.75rem; padding-right:.75rem; padding-top:2.8rem}}
-  .hero p {{margin-bottom:.3rem}}
-  [data-testid="stMetric"] {{padding:8px 11px; border-radius:12px}}
-  [data-testid="stMetricLabel"] p {{font-size:.75rem}}
-  .st-key-mapa iframe {{height:max(640px, calc(100svh - 1.5rem)) !important; border-radius:12px}}
-  .ranking table {{font-size:.82rem}}
-  .ranking th, .ranking td {{padding:7px 8px}}
-  .ranking td:nth-child(2) {{white-space:normal; min-width:9rem}}
-  .ranking th:nth-child(3), .ranking td:nth-child(3), .ranking th:nth-child(6), .ranking td:nth-child(6) {{display:none}}
-}}
-</style>''', unsafe_allow_html=True)
-
-topo_txt, topo_tema = st.columns([6, 1], vertical_alignment='center')
-with topo_txt:
-    st.markdown('''<div class="hero"><h1>Distribuição de remédios — <b class="accent">Bellman-Ford</b></h1>
-<p>Central imaginária → hospitais de Uberlândia · menor caminho pela rede viária real (OpenStreetMap)</p></div>''',
-                unsafe_allow_html=True)
-with topo_tema:
-    st.segmented_control('Tema', ['claro', 'escuro'], key='tema_widget', on_change=_mudar_tema,
-                         format_func=lambda o: ':material/light_mode:' if o == 'claro' else ':material/dark_mode:',
-                         label_visibility='collapsed', help='Tema claro (sol) ou escuro (lua)')
-
-# Aplica o tema escolhido só no navegador deste visitante: grava a preferência que o
-# próprio Streamlit lê do localStorage e recarrega a página se ela ainda não bate.
-_alvo = 'Light' if tema == 'claro' else 'Dark'
-SCRIPT_TEMA = f'''<script>(function(){{
-  var P = window.parent;
-  try {{
-    var k = 'stActiveTheme-' + P.location.pathname + '-v2', alvo = JSON.stringify('{_alvo}');
-    var n = +(P.sessionStorage.getItem('temaRecargas') || 0);
-    if (P.localStorage.getItem(k) === alvo) {{ P.sessionStorage.setItem('temaRecargas', 0); return; }}
-    if (n >= 2) return;                       // proteção contra recarregar em laço
-    P.sessionStorage.setItem('temaRecargas', n + 1);
-    P.localStorage.setItem(k, alvo);
-    var u = new URL(P.location.href); u.searchParams.set('tema', '{tema}');
-    // O iframe é isolado (sandbox) e não pode navegar a página; por isso o comando
-    // de recarregar é inserido para rodar na própria página principal.
-    var s = P.document.createElement('script');
-    s.textContent = 'location.replace(' + JSON.stringify(u.toString()) + ')';
-    P.document.head.appendChild(s);
-  }} catch (e) {{}}
-}})();</script>'''
-with st.container(key='tema_js'):
-    components.html(SCRIPT_TEMA, height=0)
-
-# ---------------------------------------------------------------------------
-# Dados (com cache)
-# ---------------------------------------------------------------------------
 REAL, DEMO = 'Ruas reais de Uberlândia', 'Demonstração (offline)'
+# Peso usado pelo Bellman-Ford (mapa/pesos.py): o real, exceto nas ruas de exemplo, que são negativas.
+CRITERIOS = {'Menor distância': 'dist', 'Menor tempo estimado': 'tempo'}
 
 
+# ---------------------------------------------------------------------------
+# Formatação
+# ---------------------------------------------------------------------------
+def num(x, casas=0):
+    """Número no formato brasileiro: 1.234,56."""
+    return f'{x:,.{casas}f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
+def unidade(criterio):
+    return 'km' if criterio.startswith('dist') else 'min'
+
+
+def no_criterio(custo, criterio):
+    """Peso do Bellman-Ford (metros ou segundos) em km ou min; pode ser negativo."""
+    valor = num(custo / 1000, 2) if criterio.startswith('dist') else num(custo / 60, 1)
+    return valor.replace('-', '−')
+
+
+def com_unidade(custo, criterio):
+    return f'{no_criterio(custo, criterio)} {unidade(criterio)}'
+
+
+def peso_curto(valor, criterio):
+    """Peso em metros (inteiro) ou segundos (1 casa), ex.: '−50 m', '+27 m', '−4,0 s'."""
+    texto = f'{num(abs(valor))} m' if criterio.startswith('dist') else f'{num(abs(valor), 1)} s'
+    return ('−' if valor < 0 else '+') + texto
+
+
+def km_min(linha):
+    """Distância e tempo REAIS da rota (sem os pesos negativos)."""
+    return f"{num(linha['km'], 2)} km · {num(linha['min'], 1)} min" if linha['rota'] else 'sem rota'
+
+
+# ---------------------------------------------------------------------------
+# Dados (com cache: só recalcula o que mudou)
+# ---------------------------------------------------------------------------
 @st.cache_resource(show_spinner='Carregando o grafo...')
 def carregar(modo, versao):
-    return criar_demonstracao() if modo == DEMO else ler_mapa()
+    # Cada aresta ganha os pesos do Bellman-Ford (com as ruas de exemplo negativas).
+    return aplicar_pesos(criar_demonstracao() if modo == DEMO else ler_mapa())
 
 
 @st.cache_resource(show_spinner='Ligando os hospitais às ruas mais próximas...')
 def estabelecimentos(modo, versao, versao_h):
+    """Hospitais com o vértice do grafo mais próximo de cada um."""
     g = carregar(modo, versao)
     lista = hospitais_demo(g) if modo == DEMO else ler_hospitais()
     proximos = vertices_mais_proximos(g, [(h['lat'], h['lon']) for h in lista])
     saida, usados = [], {}
     for h, (no, d) in zip(lista, proximos):
-        nome = h['nome']
-        usados[nome] = usados.get(nome, 0) + 1
-        if usados[nome] > 1:                      # nomes repetidos viram "Nome (2)"
-            nome = f"{nome} ({usados[nome]})"
+        usados[h['nome']] = usados.get(h['nome'], 0) + 1
+        nome = h['nome'] if usados[h['nome']] == 1 else f"{h['nome']} ({usados[h['nome']]})"
         saida.append({**h, 'nome': nome, 'no': no, 'dist_rua': d})
     return saida
 
 
 @st.cache_resource(show_spinner='Executando o Bellman-Ford...', max_entries=8)
 def rodar_bf(modo, versao, central_no, criterio):
-    return bellman_ford(carregar(modo, versao), central_no, criterio, registrar=True)
+    return bellman_ford(carregar(modo, versao), central_no, criterio)
 
 
-# O mapa é montado em 3 blocos, cada um com seu cache: assim mudar o filtro não
-# reprocessa as 51 mil ruas, e mudar o filtro/tema não roda o Bellman-Ford de novo.
+@st.cache_resource(show_spinner=False, max_entries=32)
+def tabela(modo, versao, versao_h, central_no, criterio, nomes):
+    """Linhas por hospital (rota, km, min), do mais perto ao mais longe."""
+    por_nome = {h['nome']: h for h in estabelecimentos(modo, versao, versao_h)}
+    return tabela_hospitais(carregar(modo, versao), rodar_bf(modo, versao, central_no, criterio),
+                            [por_nome[n] for n in nomes])
+
+
+# O mapa vai em 3 blocos, cada um com seu cache: mudar o filtro não reprocessa as
+# 51 mil ruas, e mudar o filtro ou o tema não roda o Bellman-Ford de novo.
 @st.cache_resource(show_spinner='Preparando o desenho das ruas...', max_entries=2)
 def bloco_grafo(modo, versao):
     return json_grafo(carregar(modo, versao))
+
+
+@st.cache_resource(show_spinner='Preparando o peso de cada rua...', max_entries=4)
+def bloco_pesos(modo, versao, criterio):
+    return json_pesos(carregar(modo, versao), criterio)
 
 
 @st.cache_resource(show_spinner='Preparando a animação...', max_entries=8)
@@ -160,19 +110,22 @@ def bloco_busca(modo, versao, central_no, criterio):
     return json_busca(carregar(modo, versao), rodar_bf(modo, versao, central_no, criterio), criterio)
 
 
+@st.cache_resource(show_spinner=False, max_entries=8)
+def ciclo(modo, versao, central_no, criterio):
+    """O ciclo negativo achado (vértices) e os trechos dele por rua: ([v...], [(rua, peso)])."""
+    vertices = achar_ciclo(rodar_bf(modo, versao, central_no, criterio))
+    return vertices, trechos_por_rua(carregar(modo, versao), vertices, criterio)
+
+
 @st.cache_resource(show_spinner=False, max_entries=32)
 def bloco_extra(modo, versao, versao_h, central, central_no, criterio, nomes):
-    g = carregar(modo, versao)
-    todos = {h['nome']: h for h in estabelecimentos(modo, versao, versao_h)}
-    r = rodar_bf(modo, versao, central_no, criterio)
-    pontos, rotas = [], []
-    for nome in nomes:
-        h = todos[nome]
-        rota = caminho(r, h['no'])
-        pontos.append({'nome': nome, 'tipo': h['tipo'], 'lat': h['lat'], 'lon': h['lon'],
-                       'alcancavel': bool(rota), 'rotulo': rotulo(g, rota)})
-        rotas.append(rota)
-    return json_extra(g, criterio, central=dict(central), pontos=pontos, rotas=rotas)
+    linhas = tabela(modo, versao, versao_h, central_no, criterio, nomes)
+    vertices, trechos = ciclo(modo, versao, central_no, criterio)
+    pontos = [{'nome': x['nome'], 'tipo': x['tipo'], 'lat': x['lat'], 'lon': x['lon'],
+               'alcancavel': x['alcancavel'], 'rotulo': km_min(x)} for x in linhas]
+    texto = f'ciclo negativo: {peso_curto(sum(p for _, p in trechos), criterio)} por volta' if trechos else ''
+    return json_extra(carregar(modo, versao), criterio, central=dict(central), pontos=pontos,
+                      rotas=[x['rota'] for x in linhas], ciclo=vertices, ciclo_texto=texto)
 
 
 @st.cache_data(ttl=86400, show_spinner='Localizando endereço...')
@@ -181,147 +134,257 @@ def geocodificar(endereco):
     return ox.geocode(endereco)
 
 
-def num(x, casas=0):
-    return f'{x:,.{casas}f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+# ---------------------------------------------------------------------------
+# Topo da página: título e tema (sol/lua)
+# ---------------------------------------------------------------------------
+def _mudar_tema():
+    if st.session_state.tema_widget:          # clicar no já selecionado não "desliga" o tema
+        st.query_params['tema'] = st.session_state.tema_widget
 
 
-def rotulo(g, rota):
-    if not rota:
-        return 'sem rota'
-    km = custo_rota(g, rota, 'length') / 1000
-    minutos = custo_rota(g, rota, 'travel_time') / 60
-    return f'{num(km, 2)} km · {num(minutos, 1)} min'
+def cabecalho():
+    """Título + botão de tema. O tema fica na URL (?tema=claro|escuro) e no navegador do visitante."""
+    tema = 'claro' if st.query_params.get('tema') == 'claro' else 'escuro'
+    st.query_params['tema'] = tema
+    st.session_state.tema_widget = tema
+    st.markdown(css(tema), unsafe_allow_html=True)
+
+    titulo, botao = st.columns([6, 1], vertical_alignment='center')
+    titulo.markdown('''<div class="hero"><h1>Distribuição de remédios — <b class="accent">Bellman-Ford</b></h1>
+<p>Central imaginária → hospitais de Uberlândia · menor caminho pela rede viária real (OpenStreetMap)</p></div>''',
+                    unsafe_allow_html=True)
+    botao.segmented_control('Tema', ['claro', 'escuro'], key='tema_widget', on_change=_mudar_tema,
+                            format_func=lambda o: ':material/light_mode:' if o == 'claro' else ':material/dark_mode:',
+                            label_visibility='collapsed', help='Tema claro (sol) ou escuro (lua)')
+    with st.container(key='tema_js'):
+        components.html(script_tema(tema), height=0)
+    return tema
 
 
 # ---------------------------------------------------------------------------
 # Barra lateral
 # ---------------------------------------------------------------------------
-with st.sidebar:
-    st.header('Grafo')
-    modo = st.radio('Rede viária', [REAL, DEMO], index=0 if MAPA_ARQUIVO.exists() else 1)
-    if modo == REAL and not MAPA_ARQUIVO.exists():
+def _botao_baixar(rotulo, acao):
+    if st.button(rotulo, type='primary', width='stretch'):
+        with st.spinner('Baixando do OpenStreetMap...'):
+            try:
+                acao()
+            except Exception as exc:
+                st.error(f'Falha no download: {exc}')
+                st.stop()
+        st.rerun()
+    st.stop()
+
+
+def _arquivos_ok(modo):
+    """No modo real, oferece o download do que estiver faltando (e para a página até baixar)."""
+    if modo != REAL:
+        return
+    if not MAPA_ARQUIVO.exists():
         st.error('Arquivo uberlandia.graphml não encontrado.')
         st.caption('Baixe agora (internet; alguns minutos) ou rode `python baixar_mapa.py`.')
-        if st.button('Baixar mapa agora', type='primary', use_container_width=True):
-            with st.spinner('Baixando ruas do OpenStreetMap e gerando o grafo...'):
-                try:
-                    baixar_mapa(arquivo=MAPA_ARQUIVO, origem='internet', raio=15000)
-                    baixar_hospitais()
-                except Exception as exc:
-                    st.error(f'Falha no download: {exc}')
-                    st.stop()
-            st.rerun()
-        st.stop()
-    if modo == REAL and not HOSPITAIS_ARQUIVO.exists():
+        _botao_baixar('Baixar mapa agora', lambda: (baixar_mapa(), baixar_hospitais()))
+    if not HOSPITAIS_ARQUIVO.exists():
         st.warning('Arquivo hospitais.json não encontrado.')
-        if st.button('Baixar hospitais', type='primary', use_container_width=True):
-            with st.spinner('Baixando hospitais e clínicas do OpenStreetMap...'):
-                try:
-                    baixar_hospitais()
-                except Exception as exc:
-                    st.error(f'Falha no download: {exc}')
-                    st.stop()
-            st.rerun()
-        st.stop()
+        _botao_baixar('Baixar hospitais', baixar_hospitais)
 
-    versao = MAPA_ARQUIVO.stat().st_mtime_ns if modo == REAL else 0
-    versao_h = HOSPITAIS_ARQUIVO.stat().st_mtime_ns if modo == REAL else 0
-    grafo = carregar(modo, versao)
-    lista = estabelecimentos(modo, versao, versao_h)
 
+def _escolher_central(modo, grafo):
+    """Devolve (central para o mapa, vértice do grafo onde ela fica)."""
     st.header('Central de distribuição')
     if modo == DEMO:
         n = int(grafo.number_of_nodes() ** .5)
-        presets = {'Central no canto sudoeste (fictícia)': '1-1', 'Central no meio da grade (fictícia)': f'{n//2}-{n//2}',
-                   'Central no canto nordeste (fictícia)': f'{n-2}-{n-2}'}
-        escolha = st.selectbox('Local', list(presets))
-        no = presets[escolha]
-        central = {'nome': escolha.replace(' (fictícia)', ''), 'lat': grafo.nodes[no]['y'], 'lon': grafo.nodes[no]['x']}
+        locais = {'Central no canto sudoeste (fictícia)': '1-1', 'Central no meio da grade (fictícia)': f'{n//2}-{n//2}',
+                  'Central no canto nordeste (fictícia)': f'{n-2}-{n-2}'}
+        escolha = st.selectbox('Local', list(locais))
+        no = locais[escolha]
+        return {'nome': escolha.replace(' (fictícia)', ''), 'lat': grafo.nodes[no]['y'], 'lon': grafo.nodes[no]['x']}, no
+
+    forma = st.radio('Definir por', ['Lista', 'Coordenadas', 'Endereço'], horizontal=True)
+    la0, lo0 = CENTRO_UBERLANDIA
+    if forma == 'Lista':
+        locais = {'Central Centro (imaginária)': (la0, lo0),
+                  'Central Norte (imaginária)': (la0 + .035, lo0 + .004),
+                  'Central Sul (imaginária)': (la0 - .040, lo0 - .006),
+                  'Central Leste (imaginária)': (la0 - .004, lo0 + .045),
+                  'Central Oeste (imaginária)': (la0 + .006, lo0 - .045)}
+        escolha = st.selectbox('Local', list(locais))
+        (lat, lon), nome = locais[escolha], escolha.replace(' (imaginária)', '')
+    elif forma == 'Coordenadas':
+        lat = st.number_input('Latitude', value=la0, format='%.5f', step=.001)
+        lon = st.number_input('Longitude', value=lo0, format='%.5f', step=.001)
+        nome = 'Central (coordenadas)'
     else:
-        forma = st.radio('Definir por', ['Lista', 'Coordenadas', 'Endereço'], horizontal=True)
-        la0, lo0 = CENTRO_UBERLANDIA
-        presets = {'Central Centro (imaginária)': (la0, lo0),
-                   'Central Norte (imaginária)': (la0 + .035, lo0 + .004),
-                   'Central Sul (imaginária)': (la0 - .040, lo0 - .006),
-                   'Central Leste (imaginária)': (la0 - .004, lo0 + .045),
-                   'Central Oeste (imaginária)': (la0 + .006, lo0 - .045)}
-        if forma == 'Lista':
-            escolha = st.selectbox('Local', list(presets))
-            lat, lon = presets[escolha]
-            nome_central = escolha.replace(' (imaginária)', '')
-        elif forma == 'Coordenadas':
-            lat = st.number_input('Latitude', value=la0, format='%.5f', step=.001)
-            lon = st.number_input('Longitude', value=lo0, format='%.5f', step=.001)
-            nome_central = 'Central (coordenadas)'
-        else:
-            endereco = st.text_input('Endereço', 'Praça Tubal Vilela, Uberlândia, MG, Brasil',
-                                     help='Usa a internet (Nominatim/OpenStreetMap). Inclua "Uberlândia, MG".')
-            try:
-                lat, lon = geocodificar(endereco.strip())
-            except Exception as exc:
-                st.error(f'Endereço não encontrado: {exc}')
-                st.stop()
-            nome_central = 'Central (endereço)'
-        no, dist_rua = vertices_mais_proximos(grafo, [(lat, lon)])[0]
-        if dist_rua > 900:
-            st.warning(f'A central está a {num(dist_rua / 1000, 1)} km da rua mais próxima do mapa (fora do recorte?).')
-        central = {'nome': nome_central, 'lat': float(lat), 'lon': float(lon)}
+        endereco = st.text_input('Endereço', 'Praça Tubal Vilela, Uberlândia, MG, Brasil',
+                                 help='Usa a internet (Nominatim/OpenStreetMap). Inclua "Uberlândia, MG".')
+        try:
+            lat, lon = geocodificar(endereco.strip())
+        except Exception as exc:
+            st.error(f'Endereço não encontrado: {exc}')
+            st.stop()
+        nome = 'Central (endereço)'
+    no, dist_rua = vertices_mais_proximos(grafo, [(lat, lon)])[0]
+    if dist_rua > 900:
+        st.warning(f'A central está a {num(dist_rua / 1000, 1)} km da rua mais próxima do mapa (fora do recorte?).')
+    return {'nome': nome, 'lat': float(lat), 'lon': float(lon)}, no
 
-    st.header('Hospitais')
-    incluir = st.checkbox('Incluir clínicas / UPAs / UAIs', value=False)
-    opcoes = sorted([h['nome'] for h in lista if incluir or h['tipo'] == 'hospital'])
-    nomes = st.multiselect('Estabelecimentos', opcoes, default=opcoes, key=f'hosp_{modo}_{incluir}',
-                           placeholder='Escolha os estabelecimentos')
-    criterio_txt = st.radio('Otimizar por', ['Menor distância', 'Menor tempo estimado'])
-    criterio = 'length' if criterio_txt == 'Menor distância' else 'travel_time'
+
+def barra_lateral():
+    """Todas as escolhas do usuário, num dicionário."""
+    with st.sidebar:
+        st.header('Grafo')
+        modo = st.radio('Rede viária', [REAL, DEMO], index=0 if MAPA_ARQUIVO.exists() else 1)
+        _arquivos_ok(modo)
+        versao = MAPA_ARQUIVO.stat().st_mtime_ns if modo == REAL else 0
+        versao_h = HOSPITAIS_ARQUIVO.stat().st_mtime_ns if modo == REAL else 0
+        grafo = carregar(modo, versao)
+        central, no = _escolher_central(modo, grafo)
+
+        st.header('Hospitais')
+        incluir = st.checkbox('Incluir clínicas / UPAs / UAIs', value=False)
+        opcoes = sorted(h['nome'] for h in estabelecimentos(modo, versao, versao_h)
+                        if incluir or h['tipo'] == 'hospital')
+        nomes = st.multiselect('Estabelecimentos', opcoes, default=opcoes, key=f'hosp_{modo}_{incluir}',
+                               placeholder='Escolha os estabelecimentos')
+        criterio = CRITERIOS[st.radio('Otimizar por', list(CRITERIOS))]
+        if modo == REAL:
+            st.caption('Ruas com **peso negativo**: trechos da Av. Rondon Pacheco e da Av. João Naves de Ávila, '
+                       'num sentido, valem **−50 m** (ou **−5 s**): passar por esse trecho **desconta 50 m** '
+                       '(ou 5 s) do total do caminho. Só nos trechos com pelo menos o dobro disso '
+                       '(≥ 100 m ou ≥ 10 s). Dê zoom no mapa para ver o peso escrito em cada rua, ou clique numa rua.')
+            if st.toggle('Criar ciclo negativo', help='O −50 m (ou −5 s) passa a valer também nos trechos curtos. '
+                         'Num trecho de 27 m valendo −50 m, ir e voltar dá −50 + 27 = −23 m: '
+                         'cada volta diminui o peso, um ciclo negativo.'):
+                criterio += '_ciclo'
+    return dict(modo=modo, versao=versao, versao_h=versao_h, grafo=grafo, central=central, no=no,
+                nomes=tuple(nomes), criterio=criterio)
+
 
 # ---------------------------------------------------------------------------
-# Resultado
+# Seções da página
 # ---------------------------------------------------------------------------
-r = rodar_bf(modo, versao, no, criterio)
-por_nome = {h['nome']: h for h in lista}
-linhas = []
-for nome in nomes:
-    h = por_nome[nome]
-    rota = caminho(r, h['no'])
-    linhas.append({'nome': nome, 'tipo': h['tipo'], 'rota': rota, 'custo': r.dist.get(h['no']),
-                   'km': custo_rota(grafo, rota, 'length') / 1000 if rota else None,
-                   'min': custo_rota(grafo, rota, 'travel_time') / 60 if rota else None})
-linhas.sort(key=lambda x: (x['custo'] is None, x['custo'] or 0))
-alcancados = sum(1 for x in linhas if x['rota'])
+def aviso_ciclo(r, cfg):
+    """Mensagem curta do ciclo negativo, com as contas do próprio ciclo achado."""
+    vertices, trechos = ciclo(cfg['modo'], cfg['versao'], cfg['no'], cfg['criterio'])
+    titulo = f'**Ciclo negativo detectado na iteração {num(r.iteracoes)}.**'
+    if not trechos:
+        st.error(f'{titulo} Existe uma volta com peso total negativo, então não existe menor caminho.')
+        return
+    crit = cfg['criterio']
+    ruas = ' e '.join(dict.fromkeys(nome for nome, _ in trechos))
+    total = peso_curto(sum(p for _, p in trechos), crit)
+    if len(vertices) == 3:
+        como = f'Ir e voltar num trecho curto da {ruas}'
+        conta = f'{peso_curto(trechos[0][1], crit)} na ida {peso_curto(trechos[1][1], crit)} na volta'
+    else:
+        como = f'Dar uma volta pela {ruas}'
+        conta = ' '.join(peso_curto(p, crit) for _, p in trechos)
+    st.error(f'{titulo} {como}: {conta} = **{total} a cada volta**. Dá para repetir a volta para sempre, '
+             'então não existe menor caminho. O ciclo está em vermelho no mapa.')
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric('Iterações', num(r.iteracoes),
-          help=f'Iterações até convergir. Limite teórico: V − 1 = {num(grafo.number_of_nodes() - 1)}')
-c2.metric('Relaxações', num(r.relaxacoes))
-c3.metric('Tempo do Bellman-Ford', f'{num(r.duracao, 2)} s')
-c4.metric('Hospitais alcançados', f'{alcancados} / {len(linhas)}')
-if r.ciclo_negativo:
-    st.error('Ciclo de peso negativo detectado: os menores caminhos não estão definidos.')
 
-if not linhas:
-    st.info('Selecione ao menos um estabelecimento na barra lateral.')
+def metricas(r, cfg, linhas):
+    grafo = cfg['grafo']
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric('Iterações', num(r.iteracoes),
+              help=f'Iterações até convergir. Limite teórico: V − 1 = {num(grafo.number_of_nodes() - 1)}')
+    c2.metric('Relaxações', num(r.relaxacoes))
+    c3.metric('Tempo do Bellman-Ford', f'{num(r.duracao, 2)} s')
+    c4.metric('Hospitais alcançados', '—' if r.ciclo_negativo else f"{sum(x['alcancavel'] for x in linhas)} / {len(linhas)}")
+    if r.ciclo_negativo:
+        aviso_ciclo(r, cfg)
+    if not linhas:
+        st.info('Selecione ao menos um estabelecimento na barra lateral.')
 
-# A rota destacada é escolhida dentro do mapa (seletor ou clique no hospital),
-# sem recarregar a página.
-html_mapa = montar_html(bloco_grafo(modo, versao),
-                        bloco_busca(modo, versao, no, criterio),
-                        bloco_extra(modo, versao, versao_h, tuple(central.items()), no, criterio,
-                                    tuple(x['nome'] for x in linhas)),
-                        tema)
-with st.container(key='mapa'):
-    components.html(html_mapa, height=760, scrolling=False)
 
-if linhas:
+def mapa(cfg, linhas, tema):
+    """Mapa animado. A rota destacada é escolhida dentro dele (seletor ou clique no hospital)."""
+    chaves = (cfg['modo'], cfg['versao'])
+    html = montar_html(bloco_grafo(*chaves),
+                       bloco_busca(*chaves, cfg['no'], cfg['criterio']),
+                       bloco_extra(*chaves, cfg['versao_h'], tuple(cfg['central'].items()), cfg['no'],
+                                   cfg['criterio'], tuple(x['nome'] for x in linhas)),
+                       tema, bloco_pesos(*chaves, cfg['criterio']))
+    with st.container(key='mapa'):
+        components.html(html, height=760, scrolling=False)
+
+
+def _tabela_html(classe, cabecalho, linhas):
+    cab = ''.join(f'<th>{c}</th>' for c in cabecalho)
+    return f'<div class="ranking {classe}"><table><thead><tr>{cab}</tr></thead><tbody>{"".join(linhas)}</tbody></table></div>'
+
+
+def ranking(linhas, codigo, criterio):
+    """Ordem do Bellman-Ford (pelo peso, que tem as ruas negativas) + distância e tempo reais da rota."""
     st.subheader('Ranking a partir da central')
     corpo = []
-    for i, x in enumerate(linhas, 1):
+    for x in linhas:
         tipo = '<span class="badge h">hospital</span>' if x['tipo'] == 'hospital' else '<span class="badge c">clínica/UPA</span>'
-        km = num(x['km'], 2) + ' km' if x['rota'] else '—'
-        mi = num(x['min'], 1) + ' min' if x['rota'] else '—'
-        trechos = num(len(x['rota']) - 1) if x['rota'] else 'sem rota'
-        corpo.append(f'<tr><td class="num">{i}</td><td>{escape(x["nome"])}</td><td>{tipo}</td>'
+        if x['alcancavel']:
+            cod, peso = f"<b>{codigo[x['nome']]}</b>", com_unidade(x['custo'], criterio)
+            km, mi, trechos = num(x['km'], 2) + ' km', num(x['min'], 1) + ' min', num(x['trechos'])
+        else:
+            cod, peso, km, mi, trechos = '—', '—', '—', '—', 'sem rota'
+        corpo.append(f'<tr><td>{cod}</td><td>{escape(x["nome"])}</td><td>{tipo}</td><td class="num">{peso}</td>'
                      f'<td class="num">{km}</td><td class="num">{mi}</td><td class="num">{trechos}</td></tr>')
-    st.markdown('<div class="ranking"><table><thead><tr><th>#</th><th>Estabelecimento</th><th>Tipo</th>'
-                '<th>Distância</th><th>Tempo estimado</th><th>Trechos</th></tr></thead><tbody>'
-                + ''.join(corpo) + '</tbody></table></div>', unsafe_allow_html=True)
+    st.markdown(_tabela_html('rk', ['Código', 'Estabelecimento', 'Tipo', 'Peso (Bellman-Ford)', 'Distância real',
+                                    'Tempo real', 'Trechos'], corpo), unsafe_allow_html=True)
+    st.caption('Peso = soma dos pesos das ruas da rota (com as ruas negativas). É por ele que o Bellman-Ford '
+               'escolhe a rota e ordena o ranking. Distância e tempo reais = a rota medida normalmente.')
+
+
+def resultado(r, grafo, linhas, codigo, criterio):
+    """Resumo em uma frase + uma rota por vez, em passos por rua."""
+    com_rota = [x for x in linhas if x['alcancavel']]
+    if not com_rota:
+        return
+    un = unidade(criterio)
+    perto, longe = com_rota[0], com_rota[-1]
+    st.subheader('Resultado do Bellman-Ford')
+    st.info(f"A van sai da **central**. O hospital de menor peso é **{codigo[perto['nome']]} – {perto['nome']}** "
+            f"(peso {com_unidade(perto['custo'], criterio)}) e o de maior peso é **{codigo[longe['nome']]} – "
+            f"{longe['nome']}** (peso {com_unidade(longe['custo'], criterio)}). O Bellman-Ford precisou de "
+            f"**{num(r.iteracoes)} rodadas** (o limite seria V − 1 = {num(grafo.number_of_nodes() - 1)}) "
+            f"e **{num(r.duracao, 2)} s**.")
+
+    opcoes = [x['nome'] for x in com_rota]
+    if st.session_state.get('rota_ver') not in opcoes:
+        st.session_state.pop('rota_ver', None)
+    escolha = st.selectbox('Ver a rota de', opcoes, key='rota_ver', format_func=lambda n: f'{codigo[n]} – {n}')
+    rota = next(x['rota'] for x in com_rota if x['nome'] == escolha)
+
+    corpo = ['<tr><td class="num">0</td><td>Central</td><td class="num">—</td><td class="num">0</td></tr>']
+    acumulado = 0.0
+    for passo, (rua, custo) in enumerate(trechos_por_rua(grafo, rota, criterio), 1):
+        acumulado += custo
+        neg = ' neg' if custo < 0 else ''                                # corredor: peso negativo
+        corpo.append(f'<tr><td class="num">{passo}</td><td>{escape(rua)}</td>'
+                     f'<td class="num{neg}">{no_criterio(custo, criterio)}</td>'
+                     f'<td class="num">{no_criterio(acumulado, criterio)}</td></tr>')
+    corpo.append(f'<tr class="hi"><td class="num">✓</td><td>chega em {codigo[escolha]} – {escape(escolha)}</td>'
+                 f'<td></td><td class="num">{no_criterio(acumulado, criterio)}</td></tr>')
+    st.markdown(_tabela_html('rota', ['Passo', 'Rua', f'peso do trecho ({un})', f'acumulado ({un})'], corpo),
+                unsafe_allow_html=True)
+    st.caption('acumulado = anterior + trecho → é a relaxação do Bellman-Ford: dist[v] = dist[pai] + peso. '
+               'Trecho em vermelho = rua com peso negativo: ali o acumulado diminui.')
+
+
+# ---------------------------------------------------------------------------
+# Página
+# ---------------------------------------------------------------------------
+def main():
+    st.set_page_config(page_title='Distribuição de remédios — Bellman-Ford', layout='wide', page_icon='💊')
+    tema = cabecalho()
+    cfg = barra_lateral()
+    r = rodar_bf(cfg['modo'], cfg['versao'], cfg['no'], cfg['criterio'])
+    linhas = tabela(cfg['modo'], cfg['versao'], cfg['versao_h'], cfg['no'], cfg['criterio'], cfg['nomes'])
+    codigo = {x['nome']: f'H{i}' for i, x in enumerate(linhas, 1) if x['alcancavel']}   # H1 = mais perto
+
+    metricas(r, cfg, linhas)
+    mapa(cfg, linhas, tema)
+    if linhas and not r.ciclo_negativo:          # com ciclo negativo não existem menores caminhos
+        ranking(linhas, codigo, cfg['criterio'])
+        resultado(r, cfg['grafo'], linhas, codigo, cfg['criterio'])
+
+
+main()

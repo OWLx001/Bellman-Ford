@@ -7,8 +7,5 @@ venv/
 # Cache de downloads do OSMnx (recriado automaticamente)
 cache/
 
-# Cópia de segurança antiga do mapa (não é usada pelo app)
-uberlandia_bk.graphml
-
 # Segredos do Streamlit
 .streamlit/secrets.toml
